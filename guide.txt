@@ -1,0 +1,193 @@
+"""
+skillswap/
+├── src/
+│   ├── database/
+│   │   ├── __init__.py
+│   │   ├── db.py          # Підключення до бази даних та залежність get_db
+│   │   └── models.py      # SQLAlchemy моделі (User, Skill, Exchange, Review)
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── users.py       # API ендпоінти для користувачів
+│   │   ├── skills.py      # API ендпоінти для навичок
+│   │   ├── exchanges.py   # API ендпоінти для обмінів
+│   │   └── reviews.py     # API ендпоінти для відгуків
+│   └── schemas.py         # Pydantic схеми для валідації даних
+├── .env                   # Змінні середовища
+├── requirements.txt       # Залежності проєкту
+└── main.py                # Головна точка входу FastAPI (підключення роутерів через APIRouter)
+
+🎯 SkillSwap - це повноцінна платформа для обміну навичками, де користувачі можуть:
+
+Реєструватися та створювати профілі (models.py, schemas.py, users.py, main.py)
+Додавати свої навички (що вміють і чому хочуть навчитися) ✅
+Знаходити людей для взаємного навчання
+Створювати запити на обмін знаннями
+Залишати відгуки після навчання
+
+
+📋 Основні завдання міні-проєкту:
+
+Система користувачів
+
+Реєстрація та профілі
+Зв'язок користувачів з навичками
+Рейтинг на основі відгуків
+Розширена система навичок
+
+Категоризація та рівні володіння
+Пошук за різними критеріями
+Автоматичний matching
+Система обмінів
+
+Створення запитів на навчання
+Статуси обмінів (очікування, прийнято, завершено)
+Історія обмінів
+Система відгуків
+
+Оцінка якості навчання
+Коментарі та рекомендації
+Вплив на рейтинг користувача
+
+
+1. Система користувачів
+Реєстрація та профілі: Створення профілю користувача з унікальними полями email та username,
+а також додатковою інформацією (full_name, bio). Перевірка на унікальність під час реєстрації.
+Зв'язок з навичками: Реалізація зв'язку між користувачами та навичками (багато-до-багатьох).
+Можливість переглядати всі навички конкретного користувача за його ID (/{user_id}/skills).
+Управління профілем: Отримання списку користувачів (з пагінацією), перегляд інформації про 
+конкретного користувача та оновлення його даних.
+
+
+
+1. Кореневі файли конфігурації та запуску
+requirements.txt
+Завдання: Скласти список усіх необхідних бібліотек для роботи проєкту з фіксацією версій або без них.
+Деталі: Повинні бути підключені: fastapi, uvicorn, sqlalchemy, pydantic, pydantic-settings, email-validator.
+.env
+
+Завдання: Створити файл змінних середовища для налаштування підключення до бази даних.
+Деталі: Вказати рядок підключення, наприклад: DATABASE_URL=sqlite:///skills.db.
+main.py
+
+Завдання: Головна точка входу в застосунок FastAPI.
+Деталі:
+Створити екземпляр app = FastAPI().
+Налаштувати CORS (CORSMiddleware), щоб у майбутньому фронтенд міг безперешкодно звертатися до API.
+Автоматично ініціювати створення таблиць у базі даних через Base.metadata.create_all(bind=engine).
+Підключити всі роутери (users, skills, exchanges, reviews) за допомогою app.include_router().
+Додати базовий кореневий маршрут (@app.get("/")) для перевірки статусу бекенду.
+
+2. Модуль бази даних (src/database/)
+src/database/__init__.py
+Завдання: Порожній файл для маркування папки як пакету Python.
+src/database/db.py
+Завдання: Налаштування підключення до бази даних та управління сесіями.
+
+Деталі:
+Створити рушій бази даних через create_engine().
+Налаштувати фабрику сесій sessionmaker(autocommit=False, autoflush=False, bind=engine).
+Реалізувати генератор залежностей get_db(), який відкриває сесію (SessionLocal()) для кожного запиту та гарантовано закриває її у блоці finally.
+src/database/models.py
+Завдання: Опис SQLAlchemy моделей (таблиць бази даних) та зв'язків між ними.
+
+Деталі: Створити базовий клас Base = declarative_base() (або DeclarativeBase) та такі моделі:
+User:
+id (Integer, Primary Key)
+username (String, Unique, Index, не порожнє)
+email (String, Unique, Index, не порожнє)
+full_name (String, опціонально)
+bio (String / Text, опціонально)
+created_at (DateTime, автоматичний час створення)
+is_active (Boolean, за замовчуванням True)
+Зв'язок «багато-до-багато» з навичками (skills).
+
+Skill:
+id (Integer, Primary Key)
+title (String, не порожнє)
+description (String / Text, не порожнє)
+category (String / Enum)
+level (String / Enum)
+can_teach (Boolean)
+want_learn (Boolean)
+created_at (DateTime)
+updated_at (DateTime, оновлюється при зміні)
+
+Зв'язок із користувачами.
+
+Exchange:
+id (Integer, Primary Key)
+sender_id (Integer, Foreign Key до users.id)
+receiver_id (Integer, Foreign Key до users.id)
+skill_id (Integer, Foreign Key до skills.id)
+message (String, опціонально)
+hours_proposed (Integer)
+status (String / Enum: pending, accepted, rejected, completed, cancelled)
+created_at, updated_at
+
+Review:
+id (Integer, Primary Key)
+exchange_id (Integer, Foreign Key до exchanges.id, Unique)
+reviewer_id (Integer, Foreign Key до users.id)
+reviewed_id (Integer, Foreign Key до users.id)
+rating (Integer від 1 до 5)
+comment (String, опціонально)
+created_at (DateTime)
+
+3. Схеми валідації (src/schemas.py)
+src/schemas.py
+Завдання: Описати Pydantic-моделі для валідації вхідних даних (Create, Update) та серіалізації відповідений (Response).
+
+Деталі:
+Створити Enum класи для категорій (SkillCategory), рівнів (SkillLevel) та статусів (ExchangeStatus).
+Створити схеми для кожної сутності:
+User: UserBase, UserCreate, UserUpdate, UserResponse.
+Skill: SkillBase, SkillCreate (з валідацією на те, що користувач не може одночасно вчити й хотіти вчитись одній навичці), SkillUpdate, SkillResponse.
+Exchange: ExchangeBase, ExchangeCreate, ExchangeUpdate, ExchangeResponse.
+Review: ReviewBase, ReviewCreate, ReviewResponse.
+Увімкнути from_attributes = True у внутрішньому класі Config для кожної Response-схеми, щоб коректно конвертувати об'єкти SQLAlchemy у JSON.
+
+4. Маршрути та бізнес-логіка API (src/routes/)
+
+src/routes/__init__.py
+Завдання: Порожній файл пакету маршрутів.
+src/routes/users.py
+Завдання: Реалізувати ендпоінти для управління користувачами з прямими запитами до БД усередині функцій.
+Деталі:
+GET /users/ — отримати список користувачів з пагінацією (skip, limit).
+GET /users/{user_id} — отримати профіль конкретного користувача за ID (з обробкою 404 помилки).
+POST /users/ — зареєструвати нового користувача з перевіркою на унікальність email та username.
+PUT /users/{user_id} — оновити дані профілю користувача.
+GET /users/{user_id}/skills — отримати список усіх навичок, якими володіє або цікавиться конкретний користувач.
+
+src/routes/skills.py
+Завдання: Реалізувати маршрути для роботи з навичками та алгоритмом пошуку збігів.
+
+Деталі:
+GET /skills/ — отримати список навичок з фільтрацією за категорією, прапорцями can_teach/want_learn, пошуком за назвою/описом та пагінацією.
+GET /skills/{skill_id} — отримати детальну інформацію про навичку.
+POST /skills/ — створити нову навичку та зв'язати її з користувачем.
+PUT /skills/{skill_id} — оновити існуючу навичку.
+DELETE /skills/{skill_id} — видалити навичку.
+GET /skills/{skill_id}/matches/ — реалізувати логіку автоматичного пошуку потенційних партнерів для обміну (якщо користувач хоче навчитись — шукати того, хто може навчити, і навпаки, у тій самій категорії).
+
+src/routes/exchanges.py
+Завдання: Реалізувати життєвий цикл запитів на обмін знаннями.
+
+Деталі:
+GET /exchanges/ — отримати список обмінів з можливістю фільтрації за статусом або користувачем.
+GET /exchanges/{exchange_id} — отримати деталі конкретного обміну.
+POST /exchanges/ — створити новий запит на обмін (з перевіркою, щоб користувач не створював обмін сам із собою).
+PUT /exchanges/{exchange_id} — оновити статус обміну (прийняти/відхилити може лише отримувач; скасувати — учасники обміну).
+Додати додаткові маршрути для зручності: отримання надісланих (/my/sent) та отриманих (/my/received) запитів.
+
+src/routes/reviews.py
+Завдання: Реалізувати систему оцінювання та відгуків після навчання.
+
+Деталі:
+GET /reviews/ — отримати список усіх відгуків.
+GET /reviews/{review_id} — отримати конкретний відгук за ID.
+POST /reviews/ — залишити відгук (з перевіркою, чи завершено обмін зі статусом completed, чи був користувач учасником обміну, і чи немає дублікатів відгуків).
+GET /reviews/user/{user_id} — отримати всі відгуки, залишені про конкретного користувача.
+GET /reviews/user/{user_id}/rating — розрахувати та повернути середній рейтинг користувача на основі всіх його відгуків.
+"""
+
